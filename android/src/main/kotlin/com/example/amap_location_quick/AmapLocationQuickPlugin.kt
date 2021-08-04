@@ -1,35 +1,54 @@
 package com.example.amap_location_quick
 
-import androidx.annotation.NonNull
+import android.app.Activity
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
-import io.flutter.plugin.common.MethodCall
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
+import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.MethodChannel.MethodCallHandler
-import io.flutter.plugin.common.MethodChannel.Result
 
-/** AmapLocationQuickPlugin */
-class AmapLocationQuickPlugin: FlutterPlugin, MethodCallHandler {
-  /// The MethodChannel that will the communication between Flutter and native Android
-  ///
-  /// This local reference serves to register the plugin with the Flutter Engine and unregister it
-  /// when the Flutter Engine is detached from the Activity
-  private lateinit var channel : MethodChannel
+class AmapLocationQuickPlugin : FlutterPlugin, ActivityAware {
+    private val TAG = "AmapLocationQuickPlugin"
 
-  override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-    channel = MethodChannel(flutterPluginBinding.binaryMessenger, "amap_location_quick")
-    channel.setMethodCallHandler(this)
-  }
+    private var methodChannel: MethodChannel? = null
+    private var binding: FlutterPlugin.FlutterPluginBinding? = null
+    private var activity: Activity? = null
 
-  override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
-    if (call.method == "getPlatformVersion") {
-      result.success("Android ${android.os.Build.VERSION.RELEASE}")
-    } else {
-      result.notImplemented()
+    private fun setup(messenger: BinaryMessenger, activity: Activity) {
+        this.methodChannel = MethodChannel(messenger, "amap_sdk_location")
+        this.activity = activity
+        this.methodChannel?.setMethodCallHandler(MethodCallHandlerImpl(activity))
     }
-  }
 
-  override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-    channel.setMethodCallHandler(null)
-  }
+    private fun teardown() {
+        this.methodChannel?.setMethodCallHandler(null)
+        this.activity = null
+        this.methodChannel = null
+    }
+
+
+    override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        this.binding = binding
+    }
+
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        this.binding = null
+    }
+
+    override fun onDetachedFromActivity() {
+        teardown()
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        onAttachedToActivity(binding)
+    }
+
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        this.binding?.let { setup(it.binaryMessenger, binding.activity) }
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        onDetachedFromActivity()
+    }
 }
