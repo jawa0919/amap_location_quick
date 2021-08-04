@@ -62,6 +62,7 @@ class _MyAppState extends State<MyApp> {
           Text('Running on: $_platformVersion\n'),
           _tilesPermission(context),
           ..._locationOnce(context),
+          ..._location(context),
           SizedBox(height: 24),
         ]).toList(),
       ),
@@ -114,6 +115,42 @@ class _MyAppState extends State<MyApp> {
         },
       ),
       if (locStr.isNotEmpty) Text(locStr)
+    ];
+  }
+
+  List<String> locStrList = [];
+  List<Widget> _location(BuildContext context) {
+    return [
+      ListTile(
+        title: Text("定位"),
+        onTap: () async {
+          if (!permissionGranted) {
+            BotToast.showText(text: "先权限检查");
+            return;
+          }
+          await AmapLocationQuick.setApiKey("28bd43ed17d636692c8803e9e0d246b2",
+              "dfb64c0463cb53927914364b5c09aba0");
+
+          final _ctrl = await AmapLocationQuick.locationController();
+
+          final _subscription = _ctrl.stream.listen((res) {
+            log(res.toString());
+            BotToast.showText(text: "定位成功");
+            locStrList.add(res.toString());
+            setState(() {});
+          }, onError: (err) {
+            log(err.toString());
+            BotToast.showText(text: "定位失败");
+          }, onDone: () {
+            log("onDone");
+          });
+          await Future.delayed(Duration(seconds: 10));
+          await _subscription.cancel();
+          await _ctrl.sink.close();
+          await _ctrl.close();
+        },
+      ),
+      if (locStrList.isNotEmpty) Text(locStrList.toString())
     ];
   }
 }
