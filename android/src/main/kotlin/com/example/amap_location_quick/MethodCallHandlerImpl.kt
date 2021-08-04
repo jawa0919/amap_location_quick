@@ -25,6 +25,13 @@ class MethodCallHandlerImpl(private val activity: Activity) : MethodChannel.Meth
                 AMapLocationClient.setApiKey(androidKey)
                 result.success(null)
             }
+            "locationOnce" -> {
+                val args: HashMap<*, *> = call.arguments as HashMap<*, *>
+                val client = LocationClientImpl(activity)
+                client.locationOnce(args)
+                client.setOnceListener { result.success(it) }
+                client.setErrorListener { code, msg, des -> result.error(code, msg, des) }
+            }
             else -> result.notImplemented()
         }
     }
