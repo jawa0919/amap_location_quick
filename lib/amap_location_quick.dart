@@ -15,12 +15,10 @@ class AmapLocationQuick {
     await _channel.invokeMethod('setApiKey', params);
   }
 
-  /// 定位单次
-  ///
-  /// TODO 2021-08-04 10:46:14 加一些参数
-  Future<Map<String, dynamic>> locationOnce() async {
-    Map<String, dynamic> params = {};
-    await _channel.invokeMethod('locationOnce', params);
-    return {};
+  static Future<Map<String, dynamic>> locationOnce() async {
+    /// TODO 2021-08-04 10:46:14 Add LocationOption
+    Map<String, dynamic> req = {};
+    final res = await _channel.invokeMethod('locationOnce', req) ?? {};
+    return Map<String, dynamic>.from(res);
   }
 }

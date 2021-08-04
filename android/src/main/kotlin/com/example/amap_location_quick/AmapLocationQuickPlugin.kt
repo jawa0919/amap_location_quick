@@ -16,7 +16,7 @@ class AmapLocationQuickPlugin : FlutterPlugin, ActivityAware {
     private var activity: Activity? = null
 
     private fun setup(messenger: BinaryMessenger, activity: Activity) {
-        this.methodChannel = MethodChannel(messenger, "amap_sdk_location")
+        this.methodChannel = MethodChannel(messenger, "amap_location_quick")
         this.activity = activity
         this.methodChannel?.setMethodCallHandler(MethodCallHandlerImpl(activity))
     }
