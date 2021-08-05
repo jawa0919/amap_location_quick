@@ -14,7 +14,6 @@ void main() {
 
 class App extends StatelessWidget {
   const App({Key? key}) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -72,15 +71,18 @@ class _MyAppState extends State<MyApp> {
   bool permissionGranted = false;
   Widget _tilesPermission(BuildContext context) {
     return ListTile(
-      title: Text("权限检查"),
+      leading: Icon(permissionGranted ? Icons.done : Icons.help_outline),
+      title: Text("check Permission"),
       onTap: () async {
         if (await Permission.locationWhenInUse.serviceStatus !=
             ServiceStatus.enabled) {
-          BotToast.showText(text: "请检查定位服务开关");
+          BotToast.showText(
+              text: "Please check the positioning service switch");
           return;
         }
         if (!await Permission.locationWhenInUse.request().isGranted) {
-          BotToast.showText(text: "请检查定位权限设置");
+          BotToast.showText(
+              text: "Please check the location permission settings");
           return;
         }
         permissionGranted = true;
@@ -93,22 +95,24 @@ class _MyAppState extends State<MyApp> {
   List<Widget> _locationOnce(BuildContext context) {
     return [
       ListTile(
-        title: Text("单次定位"),
+        title: Text("locationOnce"),
         onTap: () async {
           if (!permissionGranted) {
-            BotToast.showText(text: "先权限检查");
+            BotToast.showText(text: "Please check Permission");
             return;
           }
-          await AmapLocationQuick.setApiKey("28bd43ed17d636692c8803e9e0d246b2",
-              "dfb64c0463cb53927914364b5c09aba0");
+          await AmapLocationQuick.setApiKey(
+            "28bd43ed17d636692c8803e9e0d246b2",
+            "dfb64c0463cb53927914364b5c09aba0",
+          );
           AmapLocationQuick.locationOnce().then((res) {
             log(res.toString());
-            BotToast.showText(text: "定位成功");
+            BotToast.showText(text: "location succes");
             locStr = res.toString();
             setState(() {});
           }).catchError((err) {
             log(err.toString());
-            BotToast.showText(text: "定位失败");
+            BotToast.showText(text: "location fail");
             locStr = err.toString();
             setState(() {});
           });
@@ -119,38 +123,45 @@ class _MyAppState extends State<MyApp> {
   }
 
   List<String> locStrList = [];
+  String locError = "";
   List<Widget> _location(BuildContext context) {
     return [
       ListTile(
-        title: Text("定位"),
+        title: Text("location 10s"),
         onTap: () async {
           if (!permissionGranted) {
-            BotToast.showText(text: "先权限检查");
+            BotToast.showText(text: "Please check Permission");
             return;
           }
-          await AmapLocationQuick.setApiKey("28bd43ed17d636692c8803e9e0d246b2",
-              "dfb64c0463cb53927914364b5c09aba0");
+          await AmapLocationQuick.setApiKey(
+            "28bd43ed17d636692c8803e9e0d246b2",
+            "dfb64c0463cb53927914364b5c09aba0",
+          );
 
           final _ctrl = await AmapLocationQuick.locationController();
 
           final _subscription = _ctrl.stream.listen((res) {
             log(res.toString());
-            BotToast.showText(text: "定位成功");
+            BotToast.showText(text: "location succes");
             locStrList.add(res.toString());
             setState(() {});
           }, onError: (err) {
             log(err.toString());
-            BotToast.showText(text: "定位失败");
+            BotToast.showText(text: "location fail");
+            locError = err.toString();
+            setState(() {});
           }, onDone: () {
             log("onDone");
-          });
+          }, cancelOnError: true);
+
           await Future.delayed(Duration(seconds: 10));
           await _subscription.cancel();
           await _ctrl.sink.close();
           await _ctrl.close();
         },
       ),
-      if (locStrList.isNotEmpty) Text(locStrList.toString())
+      if (locError.isNotEmpty) Text(locError.toString()),
+      if (locStrList.isNotEmpty) Text(locStrList.toString()),
     ];
   }
 }

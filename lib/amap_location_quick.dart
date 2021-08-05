@@ -5,6 +5,13 @@ import 'package:flutter/services.dart';
 
 class AmapLocationQuick {
   static const _channel = MethodChannel('amap_location_quick');
+  static const _event = EventChannel('amap_location_quick_event');
+
+  static Stream<Map<String, dynamic>> get _broadcastStream {
+    return _event
+        .receiveBroadcastStream()
+        .map((res) => Map<String, dynamic>.from(res));
+  }
 
   static Future<String?> get platformVersion async {
     final String? version = await _channel.invokeMethod('getPlatformVersion');
@@ -16,50 +23,34 @@ class AmapLocationQuick {
     await _channel.invokeMethod('setApiKey', params);
   }
 
-  static Future<Map<String, dynamic>> locationOnce() async {
-    /// TODO 2021-08-04 10:46:14 Add LocationOption
-    Map<String, dynamic> req = {};
+  static Future<Map<String, dynamic>> locationOnce({
+    Map<String, dynamic>? option,
+  }) async {
+    Map<String, dynamic> req = option ?? {};
     final res = await _channel.invokeMethod('locationOnce', req) ?? {};
     return Map<String, dynamic>.from(res);
   }
 
-  static Future<StreamController<Map<String, dynamic>>>
-      locationController() async {
-    /// TODO 2021-08-04 10:46:14 Add LocationOption
-    Map<String, dynamic> req = {};
-    const _event = EventChannel('amap_location_quick_event');
-    await _channel.invokeMethod('location', req);
-
-    final stream = _event.receiveBroadcastStream().map((res) {
-      return Map<String, dynamic>.from(res);
-    });
-
-    StreamController<Map<String, dynamic>> _ctrl =
-        StreamController(onCancel: () async {
-      await _channel.invokeMethod('destroyLocation');
-    });
-    stream.listen((event) {
-      log("location listen event$event");
+  static Future<StreamController<Map<String, dynamic>>> locationController({
+    Map<String, dynamic>? option,
+  }) async {
+    Map<String, dynamic> req = option ?? {};
+    StreamController<Map<String, dynamic>> _ctrl = StreamController(
+      onCancel: () async {
+        await _channel.invokeMethod('destroyLocation');
+      },
+    );
+    _broadcastStream.listen((event) {
+      log("_broadcastStream listen event$event");
       _ctrl.sink.add(event);
     }, onError: (error) {
-      log("location listen error$error");
+      log("_broadcastStream onError error$error");
       _ctrl.sink.addError(error);
     }, onDone: () {
-      log("location listen  onDone");
+      log("_broadcastStream onDone");
       _ctrl.sink.close();
     }, cancelOnError: true);
-    return _ctrl;
-  }
-
-  static Stream<Map<String, dynamic>> location() async* {
-    /// TODO 2021-08-04 10:46:14 Add LocationOption
-    Map<String, dynamic> req = {};
-    const _event = EventChannel('amap_location_quick_event');
     await _channel.invokeMethod('location', req);
-
-    yield* _event
-        .receiveBroadcastStream()
-        .asBroadcastStream()
-        .map((res) => Map<String, dynamic>.from(res));
+    return _ctrl;
   }
 }

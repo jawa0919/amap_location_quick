@@ -7,29 +7,38 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 class AmapLocationQuickPlugin : FlutterPlugin, ActivityAware {
     private val TAG = "AmapLocationQuickPlugin"
 
-    private var methodChannel: MethodChannel? = null
     private var binding: FlutterPlugin.FlutterPluginBinding? = null
+
+    private var methodChannel: MethodChannel? = null
+    private var eventChannel: EventChannel? = null
     private var activity: Activity? = null
 
     private fun setup(messenger: BinaryMessenger, activity: Activity) {
         Log.i(TAG, "setup: ")
         this.methodChannel = MethodChannel(messenger, "amap_location_quick")
+        this.eventChannel = EventChannel(messenger, "amap_location_quick_event")
         this.activity = activity
-        this.methodChannel?.setMethodCallHandler(MethodCallHandlerImpl(activity, messenger))
+
+        val handlerImpl = HandlerImpl(activity)
+        this.methodChannel?.setMethodCallHandler(handlerImpl)
+        this.eventChannel?.setStreamHandler(handlerImpl)
     }
 
     private fun teardown() {
         Log.i(TAG, "teardown: ")
         this.methodChannel?.setMethodCallHandler(null)
+        this.eventChannel?.setStreamHandler(null)
+
         this.activity = null
+        this.eventChannel = null
         this.methodChannel = null
     }
-
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         Log.i(TAG, "onAttachedToEngine: ")

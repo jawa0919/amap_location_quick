@@ -9,11 +9,12 @@ import com.amap.api.location.AMapLocationListener
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 
-class LocationClientImpl(activity: Activity) : AMapLocationListener, EventChannel.StreamHandler {
+class LocationClientImpl(private val activity: Activity) : AMapLocationListener {
     private val TAG = "LocationClientImpl"
 
-    private val client = AMapLocationClient(activity)
+    private val client = AMapLocationClient(this.activity)
     private var isOnce = false
+    private var eventSink: EventChannel.EventSink? = null
 
     override fun onLocationChanged(p0: AMapLocation?) {
         Log.i(TAG, "onLocationChanged: ")
@@ -32,16 +33,6 @@ class LocationClientImpl(activity: Activity) : AMapLocationListener, EventChanne
         }
     }
 
-    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-        Log.i(TAG, "onListen: ")
-        this.eventSink = events;
-    }
-
-    override fun onCancel(arguments: Any?) {
-        Log.i(TAG, "onCancel: ")
-        destroyLocation()
-    }
-
     private lateinit var onceListener: ((HashMap<String, Any>) -> Unit)
     fun setOnceListener(listener: ((HashMap<String, Any>) -> Unit)) {
         this.onceListener = listener;
@@ -52,43 +43,43 @@ class LocationClientImpl(activity: Activity) : AMapLocationListener, EventChanne
         this.errorListener = listener;
     }
 
-    // TODO: 2021/8/4 Add Location Option
     fun locationOnce(map: HashMap<*, *>) {
+        this.isOnce = true
         try {
-            this.isOnce = true
             client.setLocationListener(this)
             val option = AMapLocationClientOption()
             option.isOnceLocation = true
             option.isLocationCacheEnable = false
+            setupClientOption(option, map)
             client.setLocationOption(option)
             client.startLocation()
         } catch (e: Exception) {
-            errorListener(e.message ?: "error", null, null)
+            errorListener(e.message ?: "locationOnce error", null, null)
         }
     }
 
-    private var event: EventChannel? = null
-    private var eventSink: EventChannel.EventSink? = null
-
-    // TODO: 2021/8/4 Add Location Option
-    fun location(binaryMessenger: BinaryMessenger, map: HashMap<*, *>) {
+    fun location(eventSink: EventChannel.EventSink?, map: HashMap<*, *>) {
+        this.eventSink = eventSink
         try {
-            event = EventChannel(binaryMessenger, "amap_location_quick_event")
-            event?.setStreamHandler(this)
             client.setLocationListener(this)
             val option = AMapLocationClientOption()
             map["interval"]?.let { option.setInterval(it as Long) }
+            setupClientOption(option, map)
             client.setLocationOption(option)
             client.startLocation()
         } catch (e: Exception) {
-            errorListener(e.message ?: "error", null, null)
+            errorListener(e.message ?: "location error", null, null)
         }
     }
 
     fun destroyLocation() {
-        client.stopLocation()
-        client.setLocationListener(null)
-        client.onDestroy()
+        try {
+            client.stopLocation()
+            client.setLocationListener(null)
+            client.onDestroy()
+        } catch (e: Exception) {
+            errorListener(e.message ?: "destroyLocation error", null, null)
+        }
     }
 
     private fun formatLocation(location: AMapLocation): HashMap<String, Any> {
@@ -112,5 +103,47 @@ class LocationClientImpl(activity: Activity) : AMapLocationListener, EventChanne
         result.put("address", location.getAddress());
         result.put("description", location.getDescription());
         return result
+    }
+
+    private fun setupClientOption(option: AMapLocationClientOption, map: HashMap<*, *>) {
+        /// 设置定位场景，目前支持三种场景（签到、出行、运动，默认无场景）
+        map["locationPurpose"]?.let {
+            val values = AMapLocationClientOption.AMapLocationPurpose.values()
+            option.locationPurpose = values[it as Int]
+        }
+        /// 设置定位模式，高精度/低功耗/仅设备。 默认选择使用高精度。
+        map["locationMode"]?.let {
+            val values = AMapLocationClientOption.AMapLocationMode.values()
+            option.locationMode = values[it as Int]
+        }
+//        /// 设置单次定位
+//        map["isOnceLocation"]?.let {
+//            /// 设置单次定位 默认为false
+//            option.isOnceLocation = it as Boolean
+//        }
+//        map["isOnceLocationLatest"]?.let {
+//            /// 获取最近3s内精度最高的一次定位结果
+//            option.isOnceLocationLatest = it as Boolean
+//        }
+//        /// 自定义连续定位 默认采用连续定位模式，时间间隔2000ms
+//        map["interval"]?.let {
+//            option.interval = it as Long
+//        }
+        /// 设置是否返回地址信息（默认返回地址信息）
+        map["isNeedAddress"]?.let {
+            option.isNeedAddress = it as Boolean
+        }
+        /// 设置是否允许模拟软件Mock位置结果，多为模拟GPS定位结果，默认为true，允许模拟位置。
+        map["isMockEnable"]?.let {
+            option.isMockEnable = it as Boolean
+        }
+        /// 设置定位请求超时时间，默认为30秒
+        map["httpTimeOut"]?.let {
+            option.httpTimeOut = it as Long
+        }
+        /// 设置是否开启定位缓存机制 缓存机制默认开启
+        map["isLocationCacheEnable"]?.let {
+            option.isLocationCacheEnable = it as Boolean
+        }
     }
 }
