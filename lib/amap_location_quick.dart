@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 
 import 'package:flutter/services.dart';
 
@@ -36,18 +35,13 @@ class AmapLocationQuick {
   }) async {
     Map<String, dynamic> req = option ?? {};
     StreamController<Map<String, dynamic>> _ctrl = StreamController(
-      onCancel: () async {
-        await _channel.invokeMethod('destroyLocation');
-      },
+      onCancel: () async => await _channel.invokeMethod('destroyLocation'),
     );
     _broadcastStream.listen((event) {
-      log("_broadcastStream listen event$event");
       _ctrl.sink.add(event);
     }, onError: (error) {
-      log("_broadcastStream onError error$error");
       _ctrl.sink.addError(error);
     }, onDone: () {
-      log("_broadcastStream onDone");
       _ctrl.sink.close();
     }, cancelOnError: true);
     await _channel.invokeMethod('location', req);
